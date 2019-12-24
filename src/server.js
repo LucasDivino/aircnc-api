@@ -4,13 +4,36 @@ const routes = require('./routes');
 const cors = require('cors');
 const path = require('path');
 
+const socketio = require('socket.io');
+const http = require('http')
+
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
 
-const app = express();
+//conexão banco de dados
 mongoose.connect(process.env.DATA_BASE, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })
+
+//server config
+const app = express();
+const server = http.Server(app);
+const io = socketio(server);
+
+const connectedUsers = {};
+
+io.on('connection', socket => {
+    const {user_id} = socket.handshake.query
+    connectedUsers[user_id] = socket.id
+});
+
+app.use((req, res, next) =>{
+    req.io = io;
+    req.connectedUsers = connectedUsers
+
+    return next();
+});
+
 //GET, POST, PUT, DELETE
 
 //req.query => acessar querry params (para filtros)
@@ -21,4 +44,4 @@ app.use(express.json());
 app.use('/files',express.static(path.resolve(__dirname,'..', 'uploads' )))
 app.use(routes);
 
-app.listen(3000);
+server.listen(3000);
